@@ -18,19 +18,40 @@ def get_data_from_hh(employer_id: list) -> list[dict[str:Any]]:
     items = response.json()['items']
     data = []
     for item in items:
-        if item['address']:
-            vacancy = {'company_name': item.get('employer').get('name'),
-                       'company_address': item.get('address').get('raw'),
-                       'ad_name': item.get('name'),
-                       'requirement': item.get("snippet").get('requirement'),
-                       'responsibility': item.get("snippet").get('responsibility'),
-                       'experience': item.get('experience').get('name'),
-                       'published_at': item.get('published_at'),
-                       'salary': item.get('salary')
-                       }
-            data.append(vacancy)
+
+        vacancy = {'company_name': item.get('employer').get('name'),
+                   'company_address': item.get('area').get('name'),
+                   'ad_name': item.get('name'),
+                   'requirement': item.get("snippet").get('requirement'),
+                   'responsibility': item.get("snippet").get('responsibility'),
+                   'experience': item.get('experience').get('name'),
+                   'published_at': item.get('published_at'),
+                   'salary': item.get('salary')
+                   }
+        data.append(vacancy)
     return data
     # return items
+
+
+def company(data):
+    data_list = []
+    for item in data:
+        items = [item.get('company_name')]
+        data_list.extend(items)
+
+    return set(data_list)
+
+
+def ads(data):
+    ads_data = []
+    for item in data:
+        items = {'ad_name': item.get('ad_name'),
+                 'requirement': item.get('requirement'),
+                 'responsibility': item.get('responsibility'),
+                 'experience': item.get('experience'),
+                 "published_at": item.get('published_at')}
+        ads_data.append(items)
+    return ads_data
 
 
 def create_data_base(name_database: str, params: dict) -> None:
@@ -71,29 +92,36 @@ def create_data_base(name_database: str, params: dict) -> None:
     conn.close()
 
 
-def save_data_to_database(data: list[dict[str: Any]], name_database: str, params: dict) -> None:
+def save_data_to_database(data: list[dict[str: Any]], company_list: list, name_database: str, params: dict) -> None:
     """Сохраняет данные о вакансиях и компаниях в базу данных"""
     conn = psycopg2.connect(dbname=name_database, **params)
     with conn.cursor() as cur:
+        for item in company_list:
+            cur.execute(
+                '''
+                INSERT INTO company (company_name)
+                VALUES (%s)
+                RETURNING company_id
+                ''',
+                (item)
+            )
+            company_id = cur.fetchone()[0]
         for item in data:
             cur.execute(
                 '''
-                INSERT INTO company (company_name, address)
-                VALUES (%s, %s)
-                ''',
-                (item['company_name'], item['company_address'])
-            )
-
-            cur.execute(
-                '''
                 INSERT INTO ads (
+                company_id
                 ads_name, 
                 data_published,
                 requirement,
                 responsibility)
-                VALUES (%s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
                 ''',
-                (item['ad_name'], item['published_at'], item['requirement'], item['responsibility'])
+                (company_id, ['ad_name'], item['published_at'], item['requirement'], item['responsibility'])
             )
+
     conn.commit()
     conn.close()
+
+# kaka = get_data_from_hh('1942330')
+# pprint(kaka)
