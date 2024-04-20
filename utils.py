@@ -17,41 +17,18 @@ def get_data_from_hh(employer_id: list) -> list[dict[str:Any]]:
     response = requests.get('https://api.hh.ru/vacancies', params=params)
     items = response.json()['items']
     data = []
-    for item in items:
-
-        vacancy = {'company_name': item.get('employer').get('name'),
-                   'company_address': item.get('area').get('name'),
-                   'ad_name': item.get('name'),
-                   'requirement': item.get("snippet").get('requirement'),
-                   'responsibility': item.get("snippet").get('responsibility'),
-                   'experience': item.get('experience').get('name'),
-                   'published_at': item.get('published_at'),
-                   'salary': item.get('salary')
+    for item in range(len(items)):
+        company = items[item]['employer']
+        vacancy = {'name': items[item]['name'],
+                   'published_at': items[item]['published_at'],
+                   'requirement': items[item]['snippet'],
+                   'salary': items[item]['salary'],
+                   'experience': items[item]['experience']['name']
                    }
-        data.append(vacancy)
+        data.append({'company': company,
+                     "vacancy": vacancy})
+
     return data
-    # return items
-
-
-def company(data):
-    data_list = []
-    for item in data:
-        items = [item.get('company_name')]
-        data_list.extend(items)
-
-    return set(data_list)
-
-
-def ads(data):
-    ads_data = []
-    for item in data:
-        items = {'ad_name': item.get('ad_name'),
-                 'requirement': item.get('requirement'),
-                 'responsibility': item.get('responsibility'),
-                 'experience': item.get('experience'),
-                 "published_at": item.get('published_at')}
-        ads_data.append(items)
-    return ads_data
 
 
 def create_data_base(name_database: str, params: dict) -> None:
@@ -72,8 +49,8 @@ def create_data_base(name_database: str, params: dict) -> None:
             CREATE TABLE company (
                 company_id SERIAL PRIMARY KEY,
                 company_name VARCHAR(100),
-                address VARCHAR(255)
-            )
+                url TEXT
+                )
         ''')
     with conn.cursor() as cur:
         cur.execute('''
@@ -92,34 +69,34 @@ def create_data_base(name_database: str, params: dict) -> None:
     conn.close()
 
 
-def save_data_to_database(data: list[dict[str: Any]], company_list: list, name_database: str, params: dict) -> None:
+def save_data_to_database(data: list[dict[str: Any]],
+                          name_database: str, params: dict) -> None:
     """Сохраняет данные о вакансиях и компаниях в базу данных"""
     conn = psycopg2.connect(dbname=name_database, **params)
+    conn.autocommit = True
     with conn.cursor() as cur:
-        for item in company_list:
-            cur.execute(
-                '''
-                INSERT INTO company (company_name)
-                VALUES (%s)
-                RETURNING company_id
-                ''',
-                (item)
-            )
-            company_id = cur.fetchone()[0]
         for item in data:
+            cur.execute(f'''INSERT INTO company(company_name, url) VALUES (%s, %s) RETURNING company_id ''',
+                        (item['company']['name'].split(',')[0], item['company']['alternate_url']))
+            company_id = cur.fetchone()[0]
+
             cur.execute(
                 '''
                 INSERT INTO ads (
-                company_id
+                company_id,
                 ads_name, 
                 data_published,
                 requirement,
                 responsibility)
                 VALUES (%s, %s, %s, %s, %s)
                 ''',
-                (company_id, ['ad_name'], item['published_at'], item['requirement'], item['responsibility'])
+                (company_id, item['vacancy']['name'],
+                 item['vacancy']['published_at'],
+                 item['vacancy']['requirement']['requirement'],
+                 item['vacancy']['requirement']['responsibility'])
             )
 
+    conn.commit()
     conn.commit()
     conn.close()
 

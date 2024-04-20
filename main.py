@@ -1,5 +1,5 @@
 from pprint import pprint
-from utils import save_data_to_database, company, ads
+from utils import save_data_to_database
 from utils import create_data_base
 from config import config
 from utils import get_data_from_hh
@@ -20,13 +20,10 @@ id_company_hh = [
 ]
 params = config()
 data_from_hh = get_data_from_hh(id_company_hh)
-inf_company = company(data_from_hh)
-company_inf = list(inf_company)
-inf_ads = ads(data_from_hh)
-# create_data_base('headhunter', params)
-# save_data_to_database(inf_ads, company_inf, 'headhunter', params)
-#
-#
-# # pprint(data_from_hh)
-for i in company_inf:
-    print(i)
+create_data_base('headhunter', params)
+save_data_to_database(data_from_hh, 'headhunter', params)
+
+# for i in data_from_hh:
+#     pprint(i['vacancy'])
+#     # print(i['vacancy'])
+
