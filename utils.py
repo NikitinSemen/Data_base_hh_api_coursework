@@ -1,5 +1,4 @@
 from pprint import pprint
-
 import requests
 from typing import Any
 import psycopg2
@@ -7,26 +6,28 @@ import psycopg2
 
 def get_data_from_hh(employer_id: list) -> list[dict[str:Any]]:
     """Функция для получение данных о компаниях и вакансиях этих компаний с HeadHunter"""
-    params = {
-        "per_page": 20,
-        "employer_id": employer_id,
-        "only_with_salary": True,
-        "area": 1,
-        "only_with_vacancies": True
-    }
-    response = requests.get('https://api.hh.ru/vacancies', params=params)
-    items = response.json()['items']
     data = []
-    for item in range(len(items)):
-        company = items[item]['employer']
-        vacancy = {'name': items[item]['name'],
-                   'published_at': items[item]['published_at'],
-                   'requirement': items[item]['snippet'],
-                   'salary': items[item]['salary'],
-                   'experience': items[item]['experience']['name']
-                   }
-        data.append({'company': company,
-                     "vacancy": vacancy})
+    for i in employer_id:
+        params = {
+            "per_page": 20,
+            "employer_id": i,
+            "only_with_salary": True,
+            "area": 1,
+            "only_with_vacancies": True
+        }
+        response = requests.get('https://api.hh.ru/vacancies', params=params)
+        items = response.json()['items']
+
+        for item in range(len(items)):
+            company = items[item]['employer']
+            vacancy = {'name': items[item]['name'],
+                       'published_at': items[item]['published_at'],
+                       'requirement': items[item]['snippet'],
+                       'salary': items[item]['salary'],
+                       'experience': items[item]['experience']['name']
+                       }
+            data.append({'company': company,
+                         "vacancy": vacancy})
 
     return data
 
@@ -96,7 +97,6 @@ def save_data_to_database(data: list[dict[str: Any]],
                  item['vacancy']['requirement']['responsibility'])
             )
 
-    conn.commit()
     conn.commit()
     conn.close()
 
