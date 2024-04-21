@@ -12,6 +12,6 @@
 - requests
 
 ## Установка
-pip install psycopg-binary
-pip install requests
-sudo apt install python 3.10.12
+`pip install psycopg-binary`
+`pip install requests`
+`sudo apt install python 3.10.12`
