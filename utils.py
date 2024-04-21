@@ -20,7 +20,8 @@ def get_data_from_hh(employer_id: list) -> list[dict[str:Any]]:
 
         for item in range(len(items)):
             company = items[item]['employer']
-            vacancy = {'name': items[item]['name'],
+            vacancy = {'company_id': items[item]['employer']['id'],
+                       'name': items[item]['name'],
                        'published_at': items[item]['published_at'],
                        'requirement': items[item]['snippet'],
                        'salary': items[item]['salary'],
@@ -48,23 +49,23 @@ def create_data_base(name_database: str, params: dict) -> None:
     with conn.cursor() as cur:
         cur.execute('''
             CREATE TABLE company (
-                company_id SERIAL PRIMARY KEY,
-                company_name VARCHAR(100),
-                url TEXT
+                company_id int PRIMARY KEY,
+                company_name VARCHAR(100)
                 )
         ''')
     with conn.cursor() as cur:
         cur.execute('''
             CREATE TABLE ads (
                 ads_id SERIAL PRIMARY KEY,
-                company_id INTEGER REFERENCES company(company_id),
+                company_id INTEGER NOT NULL,
                 ads_name VARCHAR(255),
                 data_published DATE,
                 requirement TEXT,
                 responsibility TEXT,
                 salary_from INTEGER,
-                experience VARCHAR(255)
-            )
+                experience VARCHAR(255),
+                FOREIGN KEY (company_id) REFERENCES company(company_id)
+                )
         ''')
     conn.commit()
     conn.close()
@@ -77,9 +78,11 @@ def save_data_to_database(data: list[dict[str: Any]],
     conn.autocommit = True
     with conn.cursor() as cur:
         for item in data:
-            cur.execute(f'''INSERT INTO company(company_name, url) VALUES (%s, %s) RETURNING company_id ''',
-                        (item['company']['name'].split(',')[0], item['company']['alternate_url']))
-            company_id = cur.fetchone()[0]
+            cur.execute(
+                f'''INSERT INTO company (company_id, company_name)
+                 VALUES (%s, %s)
+                 ON CONFLICT (company_id) DO NOTHING ''',
+                (item['company']['id'], item['company']['name'].split(',')[0]))
 
             cur.execute(
                 '''
@@ -90,8 +93,10 @@ def save_data_to_database(data: list[dict[str: Any]],
                 requirement,
                 responsibility)
                 VALUES (%s, %s, %s, %s, %s)
+                
                 ''',
-                (company_id, item['vacancy']['name'],
+                (item['vacancy']['company_id'],
+                 item['vacancy']['name'],
                  item['vacancy']['published_at'],
                  item['vacancy']['requirement']['requirement'],
                  item['vacancy']['requirement']['responsibility'])
