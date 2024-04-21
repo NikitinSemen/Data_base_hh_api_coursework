@@ -1,4 +1,3 @@
-from pprint import pprint
 import requests
 from typing import Any
 import psycopg2
@@ -22,10 +21,8 @@ def get_data_from_hh(employer_id: list) -> list[dict[str:Any]]:
             company = items[item]['employer']
             vacancy = {'company_id': items[item]['employer']['id'],
                        'name': items[item]['name'],
-                       'published_at': items[item]['published_at'],
-                       'requirement': items[item]['snippet'],
                        'salary': items[item]['salary'],
-                       'experience': items[item]['experience']['name']
+                       'url': items[item]['alternate_url']
                        }
             data.append({'company': company,
                          "vacancy": vacancy})
@@ -59,11 +56,9 @@ def create_data_base(name_database: str, params: dict) -> None:
                 ads_id SERIAL PRIMARY KEY,
                 company_id INTEGER NOT NULL,
                 ads_name VARCHAR(255),
-                data_published DATE,
-                requirement TEXT,
-                responsibility TEXT,
-                salary_from INTEGER,
-                experience VARCHAR(255),
+                salary_from INTEGER DEFAULT NULL,
+                salary_to INTEGER DEFAULT NULL,
+                url TEXT,
                 FOREIGN KEY (company_id) REFERENCES company(company_id)
                 )
         ''')
@@ -89,21 +84,19 @@ def save_data_to_database(data: list[dict[str: Any]],
                 INSERT INTO ads (
                 company_id,
                 ads_name, 
-                data_published,
-                requirement,
-                responsibility)
+                salary_from,
+                salary_to,
+                url)
                 VALUES (%s, %s, %s, %s, %s)
                 
                 ''',
                 (item['vacancy']['company_id'],
                  item['vacancy']['name'],
-                 item['vacancy']['published_at'],
-                 item['vacancy']['requirement']['requirement'],
-                 item['vacancy']['requirement']['responsibility'])
+                 item['vacancy']['salary']['from'],
+                 item['vacancy']['salary']['to'],
+                 item['vacancy']['url'])
             )
 
     conn.commit()
     conn.close()
 
-# kaka = get_data_from_hh('1942330')
-# pprint(kaka)
